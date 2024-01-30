@@ -1,0 +1,9 @@
+name: sciencetextmining
+dependencies:
+  - langchain
+  - numpy
+  - pandas
+  - matplotlib
+  - seaborn 
+  - jupyter
+  - transformers
