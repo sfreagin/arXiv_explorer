@@ -12,6 +12,8 @@ matplotlib = "*"
 seaborn = "*"
 jupyter = "*"
 transformers = "*"
+requests = "*"
+streamlit = "*"
 
 [dev-packages]
 
