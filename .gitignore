@@ -1,5 +1,10 @@
 notebooks/data/*
 streamlit/data/*
 
+# Jupyter
+notebooks/.ipynb_checkpoints
+streamlit/.ipynb_checkpoints
+.ipynb_checkpoints
+
 # Environments
 .env
