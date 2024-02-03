@@ -4,16 +4,16 @@
 
 ### Pre-requisites
 
-To run [main](https://github.com/giantmagellan/SeaIceForecast/blob/main/main.ipynb) and perform analysis, first install (if not already) and activate the [Conda](https://docs.conda.io/projects/conda/en/stable/index.html) virtual environment.
+For development, activate the [Pipenv](https://pipenv.pypa.io/en/latest/) virtual environment.
 
-Install Conda
+Install Pipenv
 
-If Conda is not yet installed, please see [Conda Installation](https://docs.conda.io/projects/conda/en/stable/user-guide/install/index.html)
-
-Create virtual environment from [environment.yml](https://github.com/giantmagellan/SeaIceForecast/blob/main/environment.yml) file
-
-``` conda env create -f environment.yml ```
+If Pipenv is not yet installed, please see [Pipenv Installation](https://pipenv.pypa.io/en/latest/installation.html#installing-packages-for-your-project). If using Windows, also see [Pipenv Windows Installation](https://www.pythontutorial.net/python-basics/install-pipenv-windows/)
 
 Activate the virtual environment
 
-``` conda activate seaiceextent ```
+``` pipenv shell ```
+
+Exit the virtual environment
+
+``` exit ```

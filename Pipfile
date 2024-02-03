@@ -1,0 +1,19 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+huggingface-hub = "*"
+langchain = "*"
+numpy = "*"
+pandas = "*"
+matplotlib = "*"
+seaborn = "*"
+jupyter = "*"
+transformers = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.8"
