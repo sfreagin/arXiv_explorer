@@ -4,7 +4,7 @@
 
 ### Pre-requisites
 
-For development, ensure [Pipenv](https://pipenv.pypa.io/en/latest/) is setup.
+For development, verify [Pipenv](https://pipenv.pypa.io/en/latest/) setup.
 
 Install Pipenv
 
