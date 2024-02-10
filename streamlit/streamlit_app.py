@@ -2,6 +2,9 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import ast
+from datetime import datetime, timedelta
+
+from arxiv_api import arxiv_query
 
 st.title("arXiv.org Summarizer")
 st.write("This app provides a summary of arXiv.org preprint activity in the subdomain of your choice")
@@ -38,11 +41,17 @@ tab1.write(f"You have chosen the {field_choice} field: {subcategory}")
 #st.write(category_dict[field_choice][category_choice])
 tab1.markdown('**Choose a date range**')
 
-tab1.radio("Number of Days",['180 days','90 days', '30 days', '7 days'])
-tab1.date_input("Choose a starting date", format="YYYY-MM-DD")
+day_choice = tab1.radio("Number of Days",[ '7 days', '30 days', '90 days'])
+date_choice = tab1.date_input("Choose a starting date", format="YYYY-MM-DD")
 
+day_dict = {'90 days':90, '30 days':30, '7 days':7}
 
-tab1.button("Pull arXiv.org info")
+tab1.write(f"Query from {date_choice-timedelta(days=day_dict[day_choice])} to {date_choice}")
+
+start_date = "".join(str(date_choice-timedelta(days=day_dict[day_choice])).split('-'))
+end_date = "".join(str(date_choice).split('-'))
+
+arxiv_button = tab1.button("Pull arXiv.org info")
 st.divider()
 
 
@@ -51,9 +60,13 @@ st.divider()
 ################################################################
 
 #temporary example
-df = pd.read_csv('data/example_output.csv')
 
-
+if arxiv_button:
+	df = arxiv_query(category_choice,start_date,end_date)
+	tab1.write(f"##### There are {len(df)} papers in this date range - \
+		click the Summary tab for more info")
+else:
+	df = pd.read_csv('data/example_output.csv')
 ################################################################
 #### HUGGINGFACE MODEL TO SUMMARIZE ARTICLES ###################
 ################################################################
@@ -71,24 +84,30 @@ the only home we've ever known.
 ################################################################
 
 tab2.header(f"arXiv.org - {subcategory}")
+tab2.write(f"**{date_choice-timedelta(days=day_dict[day_choice])}** $\longleftrightarrow$ **{date_choice}**")
+
+number_of_papers = len(df)
+summary_lengths = df['Summary'].str.split().map(len)
 
 col1, col2 = tab2.columns(2)
-col1.metric("Number of Papers", "1000")
-col2.metric("Avg. Length", '500 words')
+col1.metric("Number of Papers", f"{number_of_papers}")
+col2.metric("Avg. Summary", f'{int(summary_lengths.mean())} words')
 
-tab2.write(f"Summary of topics:\n\n{summary_text}")
+
 
 #### EXAMPLE HISTOGRAM
 from bokeh.plotting import figure
 from bokeh.io import show, output_file
 
 histogram_data = [500 + 100 * (np.random.normal()) for i in range(1000)]
-hist, edges = np.histogram(histogram_data, density=True, bins=50)
-p = figure(title=f"Lengths of Papers",
+hist, edges = np.histogram(summary_lengths, density=True, bins=50)
+p = figure(title=f"Lengths of Summary Abstracts",
             x_axis_label="Tokens",width=100, height=200)
 p.quad(top=hist, bottom=0, left=edges[:-1], right=edges[1:], line_color="white")
 
 tab2.bokeh_chart(p,use_container_width=True)
+
+tab2.write(f"Summary of topics:\n\n{summary_text}")
 
 #### EXAMPLE TOPIC IMPORTANCE
 topic_importance = {
@@ -115,20 +134,21 @@ tab2.caption('NOTE TO STEPHEN: CREATE A WORDCLOUD')
 tab3.header("Notable Papers")
 tab3.caption('NOTE TO STEPHEN: BIBLIOGRAPHIC INFO')
 
+
 #light string editing
 df['Summary'] = df['Summary'].str.replace('\n',' ') # removing line breaks
 df['Title'] = df['Title'].str.replace('\n','') # removing line breaks
 
 df['Author'] = df['Author'].str.replace("\\n', '\\n","', \n'")
-df['Author'] = df['Author'].apply(ast.literal_eval)
+#df['Author'] = df['Author'].apply(ast.literal_eval)
 
-for paper in range(len(df)):
+for paper in range(0,10):#len(df)):
 	tab3.markdown(f"##### {df['Title'][paper]}") #print the title
 	tab3.markdown(f"**Summary**:  {df['Summary'][paper]}") # abstract / summary
 
-	tab3.caption('**Authors**:')
-	auth_list = [f"{i}\n" for i in (df['Author'][paper])]
-	tab3.caption('\n'.join(auth_list))
+	#tab3.caption('**Authors**:')
+	#auth_list = [f"{i}\n" for i in (df['Author'][paper])]
+	#tab3.caption('\n'.join(auth_list))
 	tab3.write(f"Link: {df['ID'][paper]}")
 	tab3.divider()
 
