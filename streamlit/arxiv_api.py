@@ -10,6 +10,7 @@ def arxiv_query(chosen_category, start_date, end_date):
 	end_date=end_date
 	chosen_category=chosen_category
 
+	#https://groups.google.com/g/arxiv-api/c/mAFYT2VRpK0
 	api_url = f"http://export.arxiv.org/api/query?search_query=cat:{chosen_category}+AND+submittedDate:[{start_date}+TO+{end_date}]"
 
 	params = {
