@@ -22,7 +22,6 @@ from lda_model import simple_cleaner, vectorizer
 st.title("arXiv.org Summarizer")
 st.write("This app provides a summary of arXiv.org preprint activity in the subdomain of your choice")
 
-
 tab1, tab2, tab3, tab4 = st.tabs(['User Input', 'Summary', 'Papers','LDA'])
 
 ################################################################
