@@ -17,18 +17,18 @@ from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.decomposition import LatentDirichletAllocation
 import pyLDAvis.lda_model
 
-from lda_model import simple_cleaner, vectorizer
+from lda_model import simple_cleaner, vectorizer, lda_maker#, paper_output_maker
 
 st.title("arXiv.org Summarizer")
 st.write("This app provides a summary of arXiv.org preprint activity in the subdomain of your choice")
 
-tab1, tab2, tab3, tab4 = st.tabs(['User Input', 'Summary', 'Papers','LDA'])
+tab1, tab2, tab4, tab3 = st.tabs(['User Input', 'Summary', 'LDA Analysis', 'Papers'])
 
 ################################################################
 #### USER SELECTION OF CATEGORIES ##############################
 ################################################################
 
-field_choice = tab1.selectbox(
+field_choice = tab1.radio(
 	"Please select a field:",
 	('Math','Physics'))
 
@@ -132,26 +132,26 @@ category_dict = {
 				}
 }
 
-
+#select box for category choice
 category_choice = tab1.selectbox(
-	"Choose a category:", category_dict[field_choice].keys())
+	f"Choose a {field_choice} category:", category_dict[field_choice].keys())
 
-
+#write out the user's choice
 subcategory = " ".join(category_choice.split()[:-1])
-
 tab1.write(f"You have chosen the {field_choice} field: {subcategory}")
 
-#st.write(category_dict[field_choice][category_choice])
+#choose a date range
 tab1.markdown('**Choose a date range**')
 day_dict = {'7 days':7, '30 days':30, '90 days':90}
 day_choice = tab1.radio("Number of Days",day_dict.keys())
 date_choice = tab1.date_input("Choose a starting date", format="YYYY-MM-DD")
 tab1.write(f"Query from {date_choice-timedelta(days=day_dict[day_choice])} to {date_choice}")
 
-
+#these date variables will go into the API call
 start_date = "".join(str(date_choice-timedelta(days=day_dict[day_choice])).split('-'))
 end_date = "".join(str(date_choice).split('-'))
 
+#run the API query
 arxiv_button = tab1.button("Pull arXiv.org info")
 st.divider()
 
@@ -164,8 +164,14 @@ st.divider()
 chosen_category = category_dict[field_choice][category_choice]
 if arxiv_button:
 	df = arxiv_query(chosen_category,start_date,end_date)
-	tab1.write(f"##### There are {len(df)} papers in this date range - \
-		click the Summary tab for more info")
+	df = df.sort_values(by='Published', ascending=False).reset_index(drop=True)
+	df.to_pickle('temp_df.pkl')
+	if len(df) == 1000:
+		tab1.write(f"##### We stopped after finding {len(df)} papers - \
+			consider narrowing the date range of your search")
+	else:
+		tab1.write(f"##### There are {len(df)} papers in this date range - \
+			click the Summary tab for more info")
 else:
 	df = pd.read_csv('data/example_output.csv')
 ################################################################
@@ -208,95 +214,113 @@ p.quad(top=hist, bottom=0, left=edges[:-1], right=edges[1:], line_color="white")
 tab2.bokeh_chart(p,use_container_width=True)
 
 #### EXAMPLE SUMMARY
-tab2.write(f"#### Summary of topics:\n\n{summary_text}")
-
-
+#tab2.write(f"#### Summary of topics:\n\n{summary_text}")
+#
+#
 #### EXAMPLE TOPIC IMPORTANCE
-topic_importance = {
-	'black hole': 30,
-	'quasar' : 25,
-	"nuclei": 15,
-	'energy': 50,
-	'gravity': 20,
-	"eigen": 4
-}
-
-topic_df = pd.DataFrame(topic_importance.items(), columns=['topic','frequency'])
-topic_df = topic_df.sort_values(by='frequency', ascending=False)
-
-tab2.bar_chart(data= topic_df, x='topic', y='frequency')
-
+#topic_importance = {
+#	'black hole': 30,
+#	'quasar' : 25,
+#	"nuclei": 15,
+#	'energy': 50,
+#	'gravity': 20,
+#	"eigen": 4
+#}
+#
+#topic_df = pd.DataFrame(topic_importance.items(), columns=['topic','frequency'])
+#topic_df = topic_df.sort_values(by='frequency', ascending=False)
+#
+#tab2.bar_chart(data= topic_df, x='topic', y='frequency')
+#
 tab2.caption('NOTE TO STEPHEN: CREATE A WORDCLOUD')
 
 
-################################################################
-#### SUMMARY OUTPUTS        ###############################
-################################################################
-
-tab3.header("Notable Papers")
-tab3.caption('NOTE TO STEPHEN: BIBLIOGRAPHIC INFO')
-
-
-#light string editing
-df['Summary'] = df['Summary'].str.replace('\n',' ') # removing line breaks
-df['Title'] = df['Title'].str.replace('\n','') # removing line breaks
-
-df['Author'] = df['Author'].str.replace("\\n', '\\n","', \n'")
-#df['Author'] = df['Author'].apply(ast.literal_eval)
-
-### NOTE TO SELF - if there are fewer than 10 results, this throws an error at the end of loop
-for paper in range(0,10):#len(df)):
-	tab3.markdown(f"##### {df['Title'][paper]}") #print the title
-	tab3.markdown(f"**Summary**:  {df['Summary'][paper]}") # abstract / summary
-
-	#tab3.caption('**Authors**:')
-	#auth_list = [f"{i}\n" for i in (df['Author'][paper])]
-	#tab3.caption('\n'.join(auth_list))
-	tab3.write(f"Link: {df['ID'][paper]}")
-	tab3.divider()
-
-
-
-####################
 
 
 ################################################################
 #### LDA MODEL        ###############################
 ################################################################
 
-# simple_cleaner(my_string):
-#    #remove punctuation
-#    my_string = my_string.translate(str.maketrans(" "," ",string.punctuation))
-#    
-#    #lower case, split, remove stopwords
-#    my_string = [w for w in my_string.lower().split() if w not in stop_words]
-#    
-#    return " ".join(my_string)
-
 tab4.header(f"Latent Dirichlet Allocation (LDA) Analysis - {subcategory}")
 
+
 if arxiv_button:
+	#light cleaning
+	df['Summary'] = df['Summary'].str.replace('-', ' ')
+	df['cleaned_text'] = df['Summary'].apply(simple_cleaner)	
+
+	#create the lda_display inputs
+	count_text_vectorizer, count_text_vectors = vectorizer(df)
+	lda_display, W_lda_text_matrix = lda_maker(count_text_vectors, count_text_vectorizer)
+
+	#display the pyLDAvis output
+	with tab4:
+		html_string = pyLDAvis.prepared_data_to_html(lda_display)
+		st.components.v1.html(html_string, width=1500, height=800, scrolling=True)
+
+
+
+################################################################
+#### SUMMARY (ABSTRACT) OUTPUTS  ###############################
+################################################################
+
+#create a button to choose the LDA topic
+
+tab3.header(f"Notable Papers in {subcategory}")
+topic_button = tab3.button("Sort by topic")
+
+topic = tab3.radio("Choice of topic:",
+	["Chronological", "Topic 1", "Topic 2", "Topic 3", "Topic 4", "Topic 5", "Topic 6"])
+
+topic_mapping = {"Chronological": None, 
+					"Topic 1": 0, 
+					"Topic 2": 1, 
+					"Topic 3": 2, 
+					"Topic 4": 3,
+					"Topic 5": 4,
+					"Topic 6": 5}
+
+def paper_output_maker(df):
+	for paper in range(0,15):#len(df)):
+		try:
+			tab3.markdown(f"##### {df['Title'][paper]}") #print the title
+			tab3.caption(f"Topic relevance: {round(df['score'][paper]*100,0)}% $\cdot$ \
+							Published {df['Published'][paper][:10]}") #published date
+			tab3.markdown(f"**Summary**:  {df['Summary'][paper]}") # abstract / summary
+			tab3.write(f"Link: {df['ID'][paper]}")
+			tab3.divider()
+		except: #if there are fewer than 15 papers it throws an error
+			break
+
+
+if topic_button:
+	df = pd.read_pickle('temp_df.pkl')
+	tab3.divider()
+	#light string editing
+	df['Summary'] = df['Summary'].str.replace('\n',' ') # removing line breaks
+	df['Title'] = df['Title'].str.replace('\n','') # removing line breaks
+	
 	df['Summary'] = df['Summary'].str.replace('-', ' ')
 	df['cleaned_text'] = df['Summary'].apply(simple_cleaner)
 
 	count_text_vectorizer, count_text_vectors = vectorizer(df)
-
-	def lda_maker(count_text_vectors, count_text_vectorizer):
-		lda_text_model = LatentDirichletAllocation(n_components=6)
-		W_lda_text_matrix = lda_text_model.fit_transform(count_text_vectors)
-		H_lda_text_matrix = lda_text_model.components_
+	lda_display, W_lda_text_matrix = lda_maker(count_text_vectors, count_text_vectorizer)
 		
-		lda_display = pyLDAvis.lda_model.prepare(lda_text_model, count_text_vectors,
-	                                        count_text_vectorizer, sort_topics=False)
-
-		return lda_display
-
-	lda_display = lda_maker(count_text_vectors, count_text_vectorizer)
-
-#	pyLDAvis.save_html(lda_display, 'lda.html')
-
-
 	with tab4:
 		html_string = pyLDAvis.prepared_data_to_html(lda_display)
 		st.components.v1.html(html_string, width=1500, height=800, scrolling=True)
+
+	if topic_mapping[topic] == None:
+		df['score'] = 1
+		paper_output_maker(df)
+	else:
+		df['score'] = pd.DataFrame(W_lda_text_matrix)[topic_mapping[topic]]
+		ranked_list = pd.DataFrame(W_lda_text_matrix)[topic_mapping[topic]].sort_values(ascending=False).index
+		paper_output_maker(df.iloc[ranked_list].reset_index())
+
+
+
+
+####################
+
 

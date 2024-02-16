@@ -32,12 +32,36 @@ def vectorizer(df):
 
 
 
+#def lda_maker(count_text_vectors, count_text_vectorizer):
+#	lda_text_model = LatentDirichletAllocation(n_components=6)
+#	W_lda_text_matrix = lda_text_model.fit_transform(count_text_vectors)
+#	H_lda_text_matrix = lda_text_model.components_
+#	
+#	lda_display = pyLDAvis.lda_model.prepare(lda_text_model, count_text_vectors,
+#                                        count_text_vectorizer, sort_topics=False)
+#
+#	return lda_display
+
 def lda_maker(count_text_vectors, count_text_vectorizer):
-	lda_text_model = LatentDirichletAllocation(n_components=6)
+	lda_text_model = LatentDirichletAllocation(n_components=6, random_state=4)
 	W_lda_text_matrix = lda_text_model.fit_transform(count_text_vectors)
 	H_lda_text_matrix = lda_text_model.components_
 	
 	lda_display = pyLDAvis.lda_model.prepare(lda_text_model, count_text_vectors,
                                         count_text_vectorizer, sort_topics=False)
 
-	return lda_display
+	return lda_display, W_lda_text_matrix
+
+
+def paper_output_maker(df):
+	for paper in range(0,15):#len(df)):
+		try:
+			tab3.markdown(f"##### {df['Title'][paper]}") #print the title
+			tab3.caption(f"Published {df['Published'][paper][:10]}") #published date
+			tab3.markdown(f"**Summary**:  {df['Summary'][paper]}") # abstract / summary
+			tab3.write(f"Link: {df['ID'][paper]}")
+			tab3.divider()
+		except: #if there are fewer than 15 papers it throws an error
+			break
+
+
