@@ -19,6 +19,16 @@ import pyLDAvis.lda_model
 
 from lda_model import simple_cleaner, vectorizer, lda_maker#, paper_output_maker
 
+
+#statefulness
+if 'clicked' not in st.session_state:
+    st.session_state.clicked = False
+
+def click_button():
+    st.session_state.clicked = True
+
+
+# INTRO PAGE
 st.title("arXiv.org Summarizer")
 st.write("This app provides a summary of arXiv.org preprint activity in the subdomain of your choice")
 
@@ -152,7 +162,7 @@ start_date = "".join(str(date_choice-timedelta(days=day_dict[day_choice])).split
 end_date = "".join(str(date_choice).split('-'))
 
 #run the API query
-arxiv_button = tab1.button("Pull arXiv.org info")
+arxiv_button = tab1.button("Pull arXiv.org info", on_click=click_button)
 st.divider()
 
 
@@ -160,12 +170,12 @@ st.divider()
 #### ARXIV API QUERY        ####################################
 ################################################################
 
-#temporary example
 chosen_category = category_dict[field_choice][category_choice]
-if arxiv_button:
+
+if st.session_state.clicked:
 	df = arxiv_query(chosen_category,start_date,end_date)
 	df = df.sort_values(by='Published', ascending=False).reset_index(drop=True)
-	df.to_pickle('temp_df.pkl')
+	#df.to_pickle('temp_df.pkl')
 	if len(df) == 1000:
 		tab1.write(f"##### We stopped after finding {len(df)} papers - \
 			consider narrowing the date range of your search")
@@ -200,9 +210,7 @@ col1, col2 = tab2.columns(2)
 col1.metric("Number of Papers", f"{number_of_papers}")
 col2.metric("Avg. Summary", f'{int(summary_lengths.mean())} words')
 
-
-
-#### EXAMPLE HISTOGRAM
+#### SUMMARY LENGTH HISTOGRAM
 from bokeh.plotting import figure
 from bokeh.io import show, output_file
 
@@ -213,28 +221,7 @@ p.quad(top=hist, bottom=0, left=edges[:-1], right=edges[1:], line_color="white")
 
 tab2.bokeh_chart(p,use_container_width=True)
 
-#### EXAMPLE SUMMARY
-#tab2.write(f"#### Summary of topics:\n\n{summary_text}")
-#
-#
-#### EXAMPLE TOPIC IMPORTANCE
-#topic_importance = {
-#	'black hole': 30,
-#	'quasar' : 25,
-#	"nuclei": 15,
-#	'energy': 50,
-#	'gravity': 20,
-#	"eigen": 4
-#}
-#
-#topic_df = pd.DataFrame(topic_importance.items(), columns=['topic','frequency'])
-#topic_df = topic_df.sort_values(by='frequency', ascending=False)
-#
-#tab2.bar_chart(data= topic_df, x='topic', y='frequency')
-#
 tab2.caption('NOTE TO STEPHEN: CREATE A WORDCLOUD')
-
-
 
 
 ################################################################
@@ -243,8 +230,7 @@ tab2.caption('NOTE TO STEPHEN: CREATE A WORDCLOUD')
 
 tab4.header(f"Latent Dirichlet Allocation (LDA) Analysis - {subcategory}")
 
-
-if arxiv_button:
+if st.session_state.clicked:
 	#light cleaning
 	df['Summary'] = df['Summary'].str.replace('-', ' ')
 	df['cleaned_text'] = df['Summary'].apply(simple_cleaner)	
@@ -258,30 +244,12 @@ if arxiv_button:
 		html_string = pyLDAvis.prepared_data_to_html(lda_display)
 		st.components.v1.html(html_string, width=1500, height=800, scrolling=True)
 
-
-
 ################################################################
 #### SUMMARY (ABSTRACT) OUTPUTS  ###############################
 ################################################################
 
-#create a button to choose the LDA topic
-
-tab3.header(f"Notable Papers in {subcategory}")
-topic_button = tab3.button("Sort by topic")
-
-topic = tab3.radio("Choice of topic:",
-	["Chronological", "Topic 1", "Topic 2", "Topic 3", "Topic 4", "Topic 5", "Topic 6"])
-
-topic_mapping = {"Chronological": None, 
-					"Topic 1": 0, 
-					"Topic 2": 1, 
-					"Topic 3": 2, 
-					"Topic 4": 3,
-					"Topic 5": 4,
-					"Topic 6": 5}
-
 def paper_output_maker(df):
-	for paper in range(0,15):#len(df)):
+	for paper in range(0,20):#len(df)):
 		try:
 			tab3.markdown(f"##### {df['Title'][paper]}") #print the title
 			tab3.caption(f"Topic relevance: {round(df['score'][paper]*100,0)}% $\cdot$ \
@@ -292,23 +260,26 @@ def paper_output_maker(df):
 		except: #if there are fewer than 15 papers it throws an error
 			break
 
+#header
+tab3.header(f"Notable Papers in {subcategory}")
 
-if topic_button:
-	df = pd.read_pickle('temp_df.pkl')
+#choose the LDA topic
+topic = tab3.radio("Order by:",
+	["Chronological", "Topic 1", "Topic 2", "Topic 3", "Topic 4", "Topic 5", "Topic 6"])
+
+topic_mapping = {"Chronological": None, 
+					"Topic 1": 0, 
+					"Topic 2": 1, 
+					"Topic 3": 2, 
+					"Topic 4": 3,
+					"Topic 5": 4,
+					"Topic 6": 5}
+
+if st.session_state.clicked:
 	tab3.divider()
 	#light string editing
 	df['Summary'] = df['Summary'].str.replace('\n',' ') # removing line breaks
 	df['Title'] = df['Title'].str.replace('\n','') # removing line breaks
-	
-	df['Summary'] = df['Summary'].str.replace('-', ' ')
-	df['cleaned_text'] = df['Summary'].apply(simple_cleaner)
-
-	count_text_vectorizer, count_text_vectors = vectorizer(df)
-	lda_display, W_lda_text_matrix = lda_maker(count_text_vectors, count_text_vectorizer)
-		
-	with tab4:
-		html_string = pyLDAvis.prepared_data_to_html(lda_display)
-		st.components.v1.html(html_string, width=1500, height=800, scrolling=True)
 
 	if topic_mapping[topic] == None:
 		df['score'] = 1
