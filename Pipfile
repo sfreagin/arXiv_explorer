@@ -14,6 +14,10 @@ jupyter = "*"
 transformers = "*"
 requests = "*"
 streamlit = "*"
+nltk = "*"
+torch = "*"
+torchvision = "*"
+torchaudio = "*"
 
 [dev-packages]
 
