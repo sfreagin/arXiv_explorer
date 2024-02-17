@@ -3,6 +3,7 @@ import string
 
 from nltk.corpus import stopwords
 stop_words = set(stopwords.words('english'))
+stop_words.update(['non','also'])
 
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.feature_extraction.text import CountVectorizer
@@ -31,16 +32,6 @@ def vectorizer(df):
 	return count_text_vectorizer, count_text_vectors
 
 
-
-#def lda_maker(count_text_vectors, count_text_vectorizer):
-#	lda_text_model = LatentDirichletAllocation(n_components=6)
-#	W_lda_text_matrix = lda_text_model.fit_transform(count_text_vectors)
-#	H_lda_text_matrix = lda_text_model.components_
-#	
-#	lda_display = pyLDAvis.lda_model.prepare(lda_text_model, count_text_vectors,
-#                                        count_text_vectorizer, sort_topics=False)
-#
-#	return lda_display
 
 def lda_maker(count_text_vectors, count_text_vectorizer):
 	lda_text_model = LatentDirichletAllocation(n_components=6, random_state=4)
