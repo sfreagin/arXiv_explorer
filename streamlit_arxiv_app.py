@@ -5,7 +5,7 @@ import numpy as np
 import ast
 from datetime import datetime, timedelta
 
-from arxiv_api import arxiv_query
+from arxiv_app_modules.arxiv_api import arxiv_query
 
 import string
 from nltk.corpus import stopwords
@@ -17,7 +17,7 @@ from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.decomposition import LatentDirichletAllocation
 import pyLDAvis.lda_model
 
-from lda_model import simple_cleaner, vectorizer, lda_maker#, paper_output_maker
+from arxiv_app_modules.lda_model import simple_cleaner, vectorizer, lda_maker#, paper_output_maker
 
 
 #statefulness
