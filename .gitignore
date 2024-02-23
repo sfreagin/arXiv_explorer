@@ -5,6 +5,7 @@ streamlit/data/*
 notebooks/.ipynb_checkpoints
 streamlit/.ipynb_checkpoints
 .ipynb_checkpoints
+.DS_Store
 
 # Environments
 .env
