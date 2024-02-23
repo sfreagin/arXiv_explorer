@@ -27,6 +27,9 @@ from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.decomposition import LatentDirichletAllocation
 import pyLDAvis.lda_model
 
+from wordcloud import WordCloud
+from arxiv_app_modules.wordcloud_generator import generate_wordcloud_from_df
+
 from arxiv_app_modules.lda_model import simple_cleaner, vectorizer, lda_maker#, paper_output_maker
 
 
@@ -44,8 +47,8 @@ def session_reset():
 st.title("arXiv.org Explorer")
 st.write("This app provides a summary of arXiv.org preprint activity in the subdomain of your choice")
 
-tab1, tab3, tab4, tab2, tab5 = st.tabs(['User Input',  'Notable Papers', 'LDA Analysis', 
-	'Statistics', 'Summarizer (BETA)'])
+tab1, tab3, tab4, tab2, tab5 = st.tabs(['Home Inputs',  'Notable Papers', 'LDA Analysis', 
+	'Simple Stats', 'Summarizer (BETA)'])
 
 ################################################################
 #### USER SELECTION OF CATEGORIES ##############################
@@ -101,6 +104,9 @@ if st.session_state.clicked:
 	if len(df) == 1000:
 		tab1.write(f"##### We stopped after finding {len(df)} papers - \
 			consider narrowing the date range of your search")
+	elif len(df) <= 10:
+		tab1.write(f"##### There are only {len(df)} papers in this date range - \
+			consider expanding the date range of your search")
 	else:
 		tab1.write(f"##### There are {len(df)} papers in this date range - \
 			click the Summary tab for more info")
@@ -117,33 +123,6 @@ the only home we've ever known.
 
 — Carl Sagan, Pale Blue Dot, 1994
 """
-
-################################################################
-#### SUMMARY OUTPUTS        ###############################
-################################################################
-
-tab2.header(f"arXiv.org - {subcategory}")
-tab2.write(f"**{date_choice-timedelta(days=day_dict[day_choice])}** $\longleftrightarrow$ **{date_choice}**")
-
-number_of_papers = len(df)
-summary_lengths = df['Summary'].str.split().map(len)
-
-col1, col2 = tab2.columns(2)
-col1.metric("Number of Papers", f"{number_of_papers}")
-col2.metric("Avg. Summary", f'{int(summary_lengths.mean())} words')
-
-#### SUMMARY LENGTH HISTOGRAM
-from bokeh.plotting import figure
-from bokeh.io import show, output_file
-
-hist, edges = np.histogram(summary_lengths, density=True, bins=32)
-p = figure(title=f"Lengths of Summary Abstracts",
-            x_axis_label="Tokens",width=100, height=300)
-p.quad(top=hist, bottom=0, left=edges[:-1], right=edges[1:], line_color="white")
-
-tab2.bokeh_chart(p,use_container_width=True)
-
-tab2.caption('NOTE TO STEPHEN: CREATE A WORDCLOUD')
 
 
 ################################################################
@@ -220,6 +199,35 @@ if st.session_state.clicked:
 
 
 
+################################################################
+#### SUMMARY OUTPUTS        ###############################
+################################################################
+
+tab2.header(f"arXiv.org Abstracts in {subcategory}")
+tab2.write(f"**{date_choice-timedelta(days=day_dict[day_choice])}** $\longleftrightarrow$ **{date_choice}**")
+
+number_of_papers = len(df)
+summary_lengths = df['Summary'].str.split().map(len)
+
+col1, col2 = tab2.columns(2)
+col1.metric("Number of Papers", f"{number_of_papers}")
+col2.metric("Avg. Abstract", f'{int(summary_lengths.mean())} words')
+
+#### SUMMARY LENGTH HISTOGRAM
+from bokeh.plotting import figure
+from bokeh.io import show, output_file
+
+hist, edges = np.histogram(summary_lengths, density=True, bins=32)
+p = figure(title=f"Lengths of Summary Abstracts",
+            x_axis_label="Tokens",width=100, height=300)
+p.quad(top=hist, bottom=0, left=edges[:-1], right=edges[1:], line_color="white")
+
+
+with tab2:
+	st.bokeh_chart(p,use_container_width=True)
+	st.divider()
+	generate_wordcloud_from_df(df, field_choice, subcategory)
+	st.image('wordcloud_output.png')
 
 
 ################################################################
