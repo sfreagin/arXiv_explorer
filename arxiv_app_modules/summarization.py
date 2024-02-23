@@ -11,25 +11,25 @@ from transformers import pipeline
 from transformers import BartTokenizer, BartForConditionalGeneration, AdamW
 from langchain import PromptTemplate, HuggingFaceHub, LLMChain
 
-from arxiv_app_modules.config import API_KEY
 import requests
 
-API_URL = "https://api-inference.huggingface.co/models/philschmid/bart-large-cnn-samsum"
-headers = {"Authorization": f"Bearer {API_KEY}"}
 
-def query(payload):
+
+def query(payload, API_KEY):
+    API_URL = "https://api-inference.huggingface.co/models/philschmid/bart-large-cnn-samsum"
+    headers = {"Authorization": f"Bearer {API_KEY}"}
     response = requests.post(API_URL, headers=headers, json=payload)
     return response.json()
 
 
-def generate_summary(input_text: str, device: str='cpu') -> str:
+def generate_summary(input_text: str, API_KEY: str, device: str='cpu') -> str:
     """
     Generate summary from Arxiv research article.
 
     """
     # Start clock
     start_time = time.time()
-
+    
     # Check length of article and batch if necessary
     batches = batch_input_text(input_text)
     if len(batches) >= 12:
@@ -41,7 +41,7 @@ def generate_summary(input_text: str, device: str='cpu') -> str:
     for i in range(len(batches)):
         st.write(f"Reading and processing batch {i+1}")
         try:
-            output = query({"inputs": batches[i]})
+            output = query(payload={"inputs": batches[i]}, API_KEY=API_KEY)
             summary = output[0]['summary_text']
             sub_summaries.append(summary)
             st.caption(f'{summary.replace("</s><s><s><s>", "").replace("</s>", "")}')
@@ -52,7 +52,7 @@ def generate_summary(input_text: str, device: str='cpu') -> str:
     # Combine child summaries & remove specified separators
     joined_summaries = " ".join(sub_summaries)
     # Obtain final summary
-    output = query({'inputs': joined_summaries})
+    output = query(payload={'inputs': joined_summaries}, API_KEY=API_KEY)
     summary = output[0]['summary_text']
 
     # Elapsed time
