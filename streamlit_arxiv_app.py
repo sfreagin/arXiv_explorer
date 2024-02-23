@@ -226,20 +226,13 @@ if st.session_state.clicked:
 #### PULL PDF CONTENT  ###############################
 ################################################################
 
-if 'summary_link' not in st.session_state:
-    st.session_state.summary_link = False
-def click_link():
-    st.session_state.summary_link = True
-def link_reset():
-    st.session_state.summary_link = False
-
 
 tab5.write("[Provide credit to] https://huggingface.co/philschmid/bart-large-cnn-samsum")
 
-link = tab5.text_input("Link to arXiv.org paper", on_change=link_reset)
-model_button = tab5.button("Summarize article", on_click=click_link)
+link = tab5.text_input("Link to arXiv.org paper")
+model_button = tab5.button("Summarize article")
 
-if st.session_state.summary_link:
+if model_button:
 	link = link.replace('abs', 'pdf')  # Replacing 'abs' with 'pdf' in the URL
 	if not link.endswith('.pdf'):  # Checking if the link ends with '.pdf'
 	    link += '.pdf'  # Appending '.pdf' to the link if it doesn't end with it already
