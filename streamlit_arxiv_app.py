@@ -7,7 +7,12 @@ from datetime import datetime, timedelta
 
 from arxiv_app_modules.arxiv_api import arxiv_query, download_pdf_from_link, extract_text_from_pdf
 from arxiv_app_modules.summarization import generate_summary, batch_input_text, query
-from arxiv_app_modules.config import API_KEY
+
+import os
+try:
+	API_KEY = st.secrets['API_KEY']
+else:
+	from arxiv_app_modules.config import API_KEY
 
 import string
 import nltk
