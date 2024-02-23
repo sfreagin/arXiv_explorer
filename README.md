@@ -1,4 +1,4 @@
-# ADS 509 - Applied Text Mining
+# ArXiv.org Explorer
 
 ## Installation
 
