@@ -1,5 +1,7 @@
 notebooks/data/*
 streamlit/data/*
+config.py
+arxiv_app_modules/config.py
 
 # Jupyter
 notebooks/.ipynb_checkpoints

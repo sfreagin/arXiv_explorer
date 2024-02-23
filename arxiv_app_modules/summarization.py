@@ -11,11 +11,11 @@ from transformers import pipeline
 from transformers import BartTokenizer, BartForConditionalGeneration, AdamW
 from langchain import PromptTemplate, HuggingFaceHub, LLMChain
 
-
+from arxiv_app_modules.config import API_KEY
 import requests
 
 API_URL = "https://api-inference.huggingface.co/models/philschmid/bart-large-cnn-samsum"
-headers = {"Authorization": "Bearer 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"}
+headers = {"Authorization": f"Bearer {API_KEY}"}
 
 def query(payload):
     response = requests.post(API_URL, headers=headers, json=payload)
