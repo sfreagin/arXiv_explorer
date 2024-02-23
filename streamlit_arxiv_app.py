@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 
 from arxiv_app_modules.arxiv_api import arxiv_query, download_pdf_from_link, extract_text_from_pdf
 from arxiv_app_modules.summarization import generate_summary, batch_input_text, query
+from arxiv_app_modules.config import API_KEY
 
 import string
 import nltk
@@ -241,7 +242,7 @@ if st.session_state.summary_link:
 	pdf_io = download_pdf_from_link(link)
 	pdf_text = extract_text_from_pdf(pdf_io)
 
-	article_summary = generate_summary(pdf_text)
+	article_summary = generate_summary(input_text=pdf_text, API_KEY=API_KEY)
 	st.markdown(f"##### Main idea: {article_summary}")
 
 
