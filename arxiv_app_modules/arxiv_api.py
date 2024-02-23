@@ -1,4 +1,5 @@
 import requests
+import streamlit as st
 import pandas as pd
 from bs4 import BeautifulSoup
 import io 
@@ -70,12 +71,12 @@ def arxiv_query(chosen_category, start_date, end_date):
 
 def download_pdf_from_link(link):
     response = requests.get(link, stream=True)  # Making a GET request to download the PDF file
-
+    st.write('Downloading PDF...')
     if response.status_code == 200:  # Checking if the request was successful
         return io.BytesIO(response.content)  # Returning BytesIO object containing the PDF content
 
     else:
-        print(f"Failed to download PDF from {link}")  # Printing error message if download fails
+        st.write(f"Failed to download PDF from {link}")  # Printing error message if download fails
         return None
 
 
@@ -90,7 +91,7 @@ def extract_text_from_pdf(pdf_io):
             return text  # Returning the extracted text
         
         except Exception as e:
-            print(f"Error occurred while extracting text from PDF: {str(e)}")  # Printing error message if extraction fails
+            st.write(f"Error occurred while extracting text from PDF: {str(e)}")  # Printing error message if extraction fails
             return ""
 
 
