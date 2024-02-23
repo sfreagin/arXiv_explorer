@@ -11,7 +11,7 @@ from arxiv_app_modules.summarization import generate_summary, batch_input_text, 
 import os
 try:
 	API_KEY = st.secrets['API_KEY']
-else:
+except:
 	from arxiv_app_modules.config import API_KEY
 
 import string
