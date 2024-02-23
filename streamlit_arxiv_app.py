@@ -2,12 +2,16 @@ import streamlit as st
 st.set_page_config(layout="wide")
 import pandas as pd
 import numpy as np
-import ast
+import json
 from datetime import datetime, timedelta
 
-from arxiv_app_modules.arxiv_api import arxiv_query
+from arxiv_app_modules.arxiv_api import arxiv_query, download_pdf_from_link, extract_text_from_pdf
+from arxiv_app_modules.summarization import generate_summary, batch_input_text, query
 
 import string
+import nltk
+nltk.download('stopwords')
+nltk.download('wordnet')
 from nltk.corpus import stopwords
 stop_words = set(stopwords.words('english'))
 stop_words.add('non')
@@ -27,12 +31,15 @@ if 'clicked' not in st.session_state:
 def click_button():
     st.session_state.clicked = True
 
+def session_reset():
+    st.session_state.clicked = False
 
 # INTRO PAGE
-st.title("arXiv.org Summarizer")
+st.title("arXiv.org Explorer")
 st.write("This app provides a summary of arXiv.org preprint activity in the subdomain of your choice")
 
-tab1, tab2, tab4, tab3 = st.tabs(['User Input', 'Summary', 'LDA Analysis', 'Papers'])
+tab1, tab3, tab4, tab2, tab5 = st.tabs(['User Input',  'Notable Papers', 'LDA Analysis', 
+	'Statistics', 'Summarizer (BETA)'])
 
 ################################################################
 #### USER SELECTION OF CATEGORIES ##############################
@@ -40,120 +47,27 @@ tab1, tab2, tab4, tab3 = st.tabs(['User Input', 'Summary', 'LDA Analysis', 'Pape
 
 field_choice = tab1.radio(
 	"Please select a field:",
-	('Math','Physics'))
+	('Computer Science', 'Economics','Electrical Engineering and Systems Science', 
+		'Math', 'Physics','Quantitative Biology', 'Quantitative Finance', 'Statistics',),
+	on_change = session_reset)
 
-category_dict = {
-	"Math" : { "None": "none",
-				"Algebraic Geometry (math.AG)": "math.AG",
-				"Algebraic Topology (math.AT)": "math.AT",
-				"Analysis of PDEs (math.AP)": "math.AP",
-				"Category Theory (math.CT)": "math.CT",
-				"Complex Variables (math.CV)": "math.CV",
-				"Classical Analysis and ODEs (math.CA)": "math.CA",
-				"Combinatorics (math.CO)": "math.CO",
-				"Commutative Algebra (math.AC)": "math.AC",
-				"Differential Geometry (math.DG)": "math.DG",
-				"Dynamical Systems (math.DS)": "math.DS",
-				"Functional Analysis (math.FA)": "math.FA",
-				"General Mathematics (math.GM)": "math.GM",
-				"General Topology (math.GN)": "math.GN",
-				"Geometric Topology (math.GT)": "math.GT",
-				"Group Theory (math.GR)": "math.GR",
-				"History and Overview (math.HO)": "math.HO",
-				"Information Theory (math.IT)": "math.IT",
-				'K-Theory and Homology (math.KT)': "math.KT",
-				"Logic (math.LO)": "math.LO",
-				"Mathematical Physics (math.MP)": "math.MP",
-				"Metric Geometry (math.MG)": "math.MG",
-				"Number Theory (math.NT)": "math.NT",
-				"Numerical Analysis (math.NA)": "math.NA",
-				"Operator Algebras (math.OA)": "math.OA",
-				"Optimization and Control (math.OC)": "math.OC",
-				"Probability (math.PR)": "math.PR",
-				"Quantum Algebra (math.QA)": "math.QA",
-				"Representation Theory (math.RT)": "math.RT",
-				"Rings and Algebras (math.RA)": "math.RA",
-				"Spectral Theory (math.SG)": "math.SG",
-				"Statistics Theory (math.ST)": 'math.ST',
-				"Symplectic Geometry (math.SG)": "math.SG",
-				},
-	"Physics" : { "None ": "none",
-				#astrophysics
-				"ASTROPHYSICS -  Astrophysics of Galaxies (astro-ph.GA)": "astro-ph.GA",
-				"ASTROPHYSICS - Cosmology and Nongalactic Astrophysics (astro-ph.CO)": "astro-ph.CO",
-				"ASTROPHYSICS - Earth and Planetary Astrophysics (astro-ph.EP)": "astro-ph.EP",
-				"ASTROPHYSICS - High Energy Astrophysical Phenomena (astro-ph.HE)": "astro-ph.HE",
-				"ASTROPHYSICS - Instrumentation and Methods for Astrophysics (astro-ph.IM)": 'astro-ph.IM',
-				"ASTROPHYSICS - Mathematical Physics (math-PH)": "math-PH",
-				"ASTROPHYSICS - Solar and Stellar Astrophysics (astro-ph.SR)": "astro-ph.SR",
-				#condensed matter
-				"CONDENSED MATTER - Disordered Systems and Neural Networks (cond-mat.dis-nn)": "cond-mat.dis-nn",
-				"CONDENSED MATTER - Materials Science (cond-mat.mtrl-sci)": "cond-mat.mtrl-sci",
-				"CONDENSED MATTER - Mesoscale and Nanoscale Physics {cond-mat.mes-hall}": "cond-mat.mes-hall",
-				"CONDENSED MATTER - Other Condensed Matter (cond-mat.other)": "cond-mat.other",
-				"CONDENSED MATTER - Quantum Gases (cond-mat.quant-gas)": "cond-mat.quant-gas",
-				"CONDENSED MATTER - Soft Condensed Matter (cond-mat.soft)": "cond-mat.soft",
-				"CONDENSED MATTER - Statistical Mechanics (cond-mat.stat-mech)": "cond-mat.stat-mech",
-				"CONDENSED MATTER - Strongly Correlated Electrons (cond-mat.str-el)": "cond-mat.str-el",
-				"CONDENSED MATTER - Superconductivity (cond-mat.supr-con)": "cond-mat.supr-con",
-				# General Relativity
-				"GENERAL RELATIVITY & Quantum Cosmology (gr-qc)": "gr-qc",
-				# high energy
-				"HIGH ENERGY PHYSICS - Experiment (hep-ex)": "hep-ex",
-				"HIGH ENERGY PHYSICS - Lattice (hep-lat)": "hep-lat",
-				"HIGH ENERGY PHYSICS - Phenomenology (hep-ph)": "hep-ph",
-				"HIGH ENERGY PHYSICS - Theory (hep-th)": "hep-th",
-				#mathematical physics
-				"MATHEMATICAL PHYSICS (math-ph)": "math-ph",
-				#nonlinear sciences
-				"NONLINEAR SCIENCES - Adaptation and Self-Organizing Systems (nlin.AO)": "nlin.AO",
-				"NONLINEAR SCIENCES - Cellular Automata and Lattice Gases (nlin.CG)": "nlin.CG",
-				"NONLINEAR SCIENCES - Chaotic Dynamics (nlin.CD)": "nlin.CD",
-				"NONLINEAR SCIENCES - Exactly Solvable and Integrable Systems (nlin.SI)": "nlin.SI",
-				"NONLINEAR SCIENCES - Pattern Formation and Solitons (nlin.PS)": "nlin.PS",
-				#nuclear
-				"NUCLEAR EXPERIMENT (nucl-ex)": "nucl-ex",
-				"NUCLEAR THEORY (nucl-th)": "nucl-th",
-				# Physics
-				"PHYSICS - Accelerator Physics (physics.acc-ph)": "physics.acc-ph",
-				"PHYSICS - Applied Physics (physics.app-ph)": "physics.app-ph",
-				"PHYSICS - Atmospheric and Oceanic Physics (physics.ao-ph)": "physics.ao-ph",
-				"PHYSICS - Atomic and Molecular Clusters (physics.atm-clus)": "physics.atm-clus",
-				"PHYSICS - Atomic Physics (physics.atom-ph)": "physics.atom-ph",
-				"PHYSICS - Biological Physics (physics.bio-ph)": "physics.bio-ph",
-				"PHYSICS - Chemical Physics (physics.chem-ph)": "physics.chem-ph",
-				"PHYSICS - Classical Physics (physics.class-ph)": "physics.class-ph",
-				"PHYSICS - Computational Physics (physics.comp-ph)": "physics.comp-ph",
-				"PHYSICS - Data Analysis, Statistics and Probability (physics.data-an)": "physics.data-an",
-				"PHYSICS - Fluid Dynamics (physics.flu-dyn)": "physics.flu-dyn",
-				"PHYSICS - General Physics (physics.gen-ph)": "physics.gen-ph",
-				"PHYSICS - Geophysics (physics.geo-ph)": "physics.geo-ph",
-				"PHYSICS - History and Philosophy of Physics (physics.hist-ph)": "physics.hist-ph",
-				"PHYSICS - Instrumentation and Detectors (physics.ins-det)": "physics.ins-det",
-				"PHYSICS - Medical Physics (physics.med-ph)": "physics.med-ph",
-				"PHYSICS - Optics (physics.optics)": "physics.optics",
-				"PHYSICS - Physics and Society (physics.soc-ph)": "physics.soc-ph",
-				"PHYSICS - Physics Education (physics.ed-ph)": "physics.ed-ph",
-				"PHYSICS - Plasma Physics (physics.plasm-ph)": "physics.plasm-ph",
-				"PHYSICS - Popular Physics (physics.pop-ph)": "physics.pop-ph",
-				"PHYSICS - Space Physics (physics.space-ph)": "physics.space-ph",
-				#quantum
-				"QUANTUM PHYSICS (quant-ph)": "quant-ph"
-				}
-}
+#pull in the categories corresponding to each field
+with open('category_taxonomy.json','r') as f:
+	category_dict = json.load(f)
 
 #select box for category choice
 category_choice = tab1.selectbox(
-	f"Choose a {field_choice} category:", category_dict[field_choice].keys())
+	f"Choose a {field_choice} category:", category_dict[field_choice].keys(),
+	on_change = session_reset)
 
 #write out the user's choice
 subcategory = " ".join(category_choice.split()[:-1])
 tab1.write(f"You have chosen the {field_choice} field: {subcategory}")
 
 #choose a date range
-tab1.markdown('**Choose a date range**')
+#tab1.markdown('**Choose a date range**')
 day_dict = {'7 days':7, '30 days':30, '90 days':90}
-day_choice = tab1.radio("Number of Days",day_dict.keys())
+day_choice = tab1.radio("**Choose a date window**",day_dict.keys(), on_change = session_reset)
 date_choice = tab1.date_input("Choose a starting date", format="YYYY-MM-DD")
 tab1.write(f"Query from {date_choice-timedelta(days=day_dict[day_choice])} to {date_choice}")
 
@@ -171,6 +85,8 @@ st.divider()
 ################################################################
 
 chosen_category = category_dict[field_choice][category_choice]
+if chosen_category == "None":
+	st.session_state.clicked = False
 
 if st.session_state.clicked:
 	df = arxiv_query(chosen_category,start_date,end_date)
@@ -229,7 +145,7 @@ tab2.caption('NOTE TO STEPHEN: CREATE A WORDCLOUD')
 ################################################################
 
 tab4.header(f"Latent Dirichlet Allocation (LDA) Analysis - {subcategory}")
-
+tab4.caption("[NOTE TO STEPHEN: SHORT HOW-TO GUIDE GOES HERE]")
 if st.session_state.clicked:
 	#light cleaning
 	df['Summary'] = df['Summary'].str.replace('-', ' ')
@@ -237,7 +153,7 @@ if st.session_state.clicked:
 
 	#create the lda_display inputs
 	count_text_vectorizer, count_text_vectors = vectorizer(df)
-	lda_display, W_lda_text_matrix = lda_maker(count_text_vectors, count_text_vectorizer)
+	lda_display, W_lda_text_matrix, lda_text_model = lda_maker(count_text_vectors, count_text_vectorizer)
 
 	#display the pyLDAvis output
 	with tab4:
@@ -252,9 +168,9 @@ def paper_output_maker(df):
 	for paper in range(0,20):#len(df)):
 		try:
 			tab3.markdown(f"##### {df['Title'][paper]}") #print the title
-			tab3.caption(f"Topic relevance: {round(df['score'][paper]*100,0)}% $\cdot$ \
+			tab3.caption(f"Topic relevance: {round(df['score'][paper]*100,1	)}% $\cdot$ \
 							Published {df['Published'][paper][:10]}") #published date
-			tab3.markdown(f"**Summary**:  {df['Summary'][paper]}") # abstract / summary
+			tab3.markdown(f"**Abstract**:  {df['Summary'][paper]}") # abstract / summary
 			tab3.write(f"Link: {df['ID'][paper]}")
 			tab3.divider()
 		except: #if there are fewer than 15 papers it throws an error
@@ -262,34 +178,65 @@ def paper_output_maker(df):
 
 #header
 tab3.header(f"Notable Papers in {subcategory}")
-
-#choose the LDA topic
-topic = tab3.radio("Order by:",
-	["Chronological", "Topic 1", "Topic 2", "Topic 3", "Topic 4", "Topic 5", "Topic 6"])
-
-topic_mapping = {"Chronological": None, 
-					"Topic 1": 0, 
-					"Topic 2": 1, 
-					"Topic 3": 2, 
-					"Topic 4": 3,
-					"Topic 5": 4,
-					"Topic 6": 5}
+tab3.write(f"**{date_choice-timedelta(days=day_dict[day_choice])}** $\longleftrightarrow$ **{date_choice}**")
 
 if st.session_state.clicked:
-	tab3.divider()
+	#choose the LDA topic
+	features = count_text_vectorizer.get_feature_names_out()
+	topic_extender = [f"Topic {topic+1} keywords: {[features[words.argsort()[::-1][i]] for i in range(0,6)]}" for topic, words in enumerate(lda_text_model.components_)]
+
+	topic = tab3.radio("Order by:",
+		["Chronological"] + topic_extender)
+	#	["Chronological", "Topic 1", "Topic 2", "Topic 3", "Topic 4", "Topic 5", "Topic 6"])
+
+	topic_mapping = {"Chronological": None, 
+						"Topic 1": 0, 
+						"Topic 2": 1, 
+						"Topic 3": 2, 
+						"Topic 4": 3,
+						"Topic 5": 4,
+						"Topic 6": 5}
+
+tab3.divider()
+
+if st.session_state.clicked:	
 	#light string editing
 	df['Summary'] = df['Summary'].str.replace('\n',' ') # removing line breaks
 	df['Title'] = df['Title'].str.replace('\n','') # removing line breaks
 
-	if topic_mapping[topic] == None:
+	if topic == "Chronological":
 		df['score'] = 1
 		paper_output_maker(df)
 	else:
-		df['score'] = pd.DataFrame(W_lda_text_matrix)[topic_mapping[topic]]
-		ranked_list = pd.DataFrame(W_lda_text_matrix)[topic_mapping[topic]].sort_values(ascending=False).index
+		df['score'] = pd.DataFrame(W_lda_text_matrix)[topic_mapping[topic[:7]]]
+		ranked_list = pd.DataFrame(W_lda_text_matrix)[topic_mapping[topic[:7]]].sort_values(ascending=False).index
 		paper_output_maker(df.iloc[ranked_list].reset_index())
 
 
+
+
+
+################################################################
+#### PULL PDF CONTENT  ###############################
+################################################################
+
+tab5.write("[Provide credit to] https://huggingface.co/philschmid/bart-large-cnn-samsum")
+
+link = tab5.text_input("Link to arXiv.org paper")
+model_button = tab5.button("Summarize article")
+
+#tab5.subheader('THIS DOES NOT WORK YET ONLINE')
+
+if model_button:
+	link = link.replace('abs', 'pdf')  # Replacing 'abs' with 'pdf' in the URL
+	if not link.endswith('.pdf'):  # Checking if the link ends with '.pdf'
+	    link += '.pdf'  # Appending '.pdf' to the link if it doesn't end with it already
+
+	pdf_io = download_pdf_from_link(link)
+	pdf_text = extract_text_from_pdf(pdf_io)
+
+	article_summary = generate_summary(pdf_text)
+	st.markdown(f"##### Main idea: {article_summary}")
 
 
 ####################
