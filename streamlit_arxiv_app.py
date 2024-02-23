@@ -109,7 +109,7 @@ if st.session_state.clicked:
 			consider expanding the date range of your search")
 	else:
 		tab1.write(f"##### There are {len(df)} papers in this date range - \
-			click the Summary tab for more info")
+			explore the tabs for more info")
 else:
 	df = pd.read_csv('arxiv_app_modules/data/example_output.csv')
 ################################################################
