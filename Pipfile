@@ -24,6 +24,7 @@ lxml = "*"
 pyldavis = "*"
 pypdf2 = "*"
 scikit-learn = "*"
+wordcloud = "*"
 
 [dev-packages]
 
