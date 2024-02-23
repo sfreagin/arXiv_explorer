@@ -14,6 +14,17 @@ jupyter = "*"
 transformers = "*"
 requests = "*"
 streamlit = "*"
+nltk = "*"
+torch = "*"
+torchvision = "*"
+torchaudio = "*"
+beautifulsoup4 = "*"
+bokeh = "*"
+lxml = "*"
+pyldavis = "*"
+pypdf2 = "*"
+scikit-learn = "*"
+wordcloud = "*"
 
 [dev-packages]
 
