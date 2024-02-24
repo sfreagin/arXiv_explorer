@@ -47,7 +47,7 @@ def session_reset():
 st.title("arXiv.org Explorer")
 st.write("This app provides a summary of arXiv.org preprint activity in the subdomain of your choice")
 
-tab1, tab3, tab4, tab2, tab5 = st.tabs(['Home Inputs',  'Notable Papers', 'LDA Analysis', 
+tab1, tab4, tab3, tab2, tab5 = st.tabs(['Home Inputs',  'LDA Analysis', 'Notable Papers',
 	'Simple Stats', 'Summarizer (BETA)'])
 
 ################################################################
