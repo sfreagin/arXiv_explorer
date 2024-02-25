@@ -29,7 +29,7 @@ def generate_wordcloud_from_df(df, field_choice, subcategory):
     custom_cmap, bounds = create_custom_colormap()
     
     # Generate a word cloud image
-    wordcloud = WordCloud(width=900, height=400, 
+    wordcloud = WordCloud(width=800, height=400, 
                           background_color='white', 
                           colormap=custom_cmap,
                           contour_color='black',
@@ -45,7 +45,7 @@ def generate_wordcloud_from_df(df, field_choice, subcategory):
     # Save the word cloud image to a file
     wordcloud.to_file("wordcloud_output.png")
     
-    st.markdown(f"#### Most frequent words in {subcategory}")
+    st.markdown(f"#### Word cloud for {subcategory}")
 
 # Example usage
 #if __name__ == "__main__":

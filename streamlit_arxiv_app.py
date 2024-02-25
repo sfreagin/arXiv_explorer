@@ -27,6 +27,7 @@ from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.decomposition import LatentDirichletAllocation
 import pyLDAvis.lda_model
 
+from bokeh.models import HoverTool
 from wordcloud import WordCloud
 from arxiv_app_modules.wordcloud_generator import generate_wordcloud_from_df
 
@@ -77,7 +78,7 @@ tab1.write(f"You have chosen the {field_choice} field: {subcategory}")
 #tab1.markdown('**Choose a date range**')
 day_dict = {'7 days':7, '30 days':30, '90 days':90}
 day_choice = tab1.radio("**Choose a date window**",day_dict.keys(), on_change = session_reset)
-date_choice = tab1.date_input("Choose a starting date", format="YYYY-MM-DD")
+date_choice = tab1.date_input("Choose the endpoint", format="YYYY-MM-DD")
 tab1.write(f"Query from {date_choice-timedelta(days=day_dict[day_choice])} to {date_choice}")
 
 #these date variables will go into the API call
@@ -130,20 +131,60 @@ the only home we've ever known.
 ################################################################
 
 tab4.header(f"Latent Dirichlet Allocation (LDA) Analysis - {subcategory}")
-tab4.caption("[NOTE TO STEPHEN: SHORT HOW-TO GUIDE GOES HERE]")
+tab4.markdown('Latent Dirichlet Allocation (LDA) is an unsupervised machine learning method to organize \
+	text documents by "topic" according to their vocabulary. Even narrow scientific fields will often span \
+	multiple overlapping topics, and using LDA models can help a researcher narrow the scope of papers \
+	relevant to their topic of interest.')
+tab4.markdown('The LDA visual model below is powered by the `pyLDAvis` library \
+	and is designed to ["help users interpret the topics in... \
+	a corpus of text data."](https://pyldavis.readthedocs.io/en/latest/readme.html) ')
+tab4.divider()
+
 if st.session_state.clicked:
-	#light cleaning
-	df['Summary'] = df['Summary'].str.replace('-', ' ')
-	df['cleaned_text'] = df['Summary'].apply(simple_cleaner)	
+	if len(df) <= 10:
+		tab4.subheader(":red[WARNING: not enough papers to create LDA visual]")
+	else:
+		#light cleaning
+		df['Summary'] = df['Summary'].str.replace('-', ' ')
+		df['cleaned_text'] = df['Summary'].apply(simple_cleaner)	
 
-	#create the lda_display inputs
-	count_text_vectorizer, count_text_vectors = vectorizer(df)
-	lda_display, W_lda_text_matrix, lda_text_model = lda_maker(count_text_vectors, count_text_vectorizer)
+		#create the lda_display inputs
+		count_text_vectorizer, count_text_vectors = vectorizer(df)
+		lda_display, W_lda_text_matrix, lda_text_model = lda_maker(count_text_vectors, count_text_vectorizer)
 
-	#display the pyLDAvis output
-	with tab4:
-		html_string = pyLDAvis.prepared_data_to_html(lda_display)
-		st.components.v1.html(html_string, width=1500, height=800, scrolling=True)
+		#display the pyLDAvis output
+		with tab4:
+			html_string = pyLDAvis.prepared_data_to_html(lda_display)
+			st.components.v1.html(html_string, width=1500, height=800, scrolling=True)
+
+tab4.subheader('Looking under the hood')
+tab4.markdown("""This LDA model is based on the scikit-learn `LatentDirichletAllocation` library. \
+	The sklearn code is designed for Singular Value Decomposition (SVD) and Non-Negative Matrix \
+	Factorization (NMF), both of which use matrix factorization for topic modeling, \
+	but it outputs similar array shapes for LDA as well.
+
+For more information, please visit the [sklearn documentation](https://scikit-learn.org/stable/modules/generated/sklearn.decomposition.LatentDirichletAllocation.html).
+
+```python
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.decomposition import LatentDirichletAllocation
+import pyLDAvis
+
+#### turn the text strings into token vectors
+#### but only if a token appears in at least 5 and no more than 50% of documents 
+count_text_vectorizer = CountVectorizer(min_df=5, max_df=0.5)
+count_text_vectors = count_text_vectorizer.fit_transform(df['cleaned_text'])
+
+#### creates LDA analogs for the W (topic-document) and H (topic-feature) matrices of SVD and NMF
+lda_text_model = LatentDirichletAllocation(n_components=6, random_state=4)
+W_lda_text_matrix = lda_text_model.fit_transform(count_text_vectors)
+H_lda_text_matrix = lda_text_model.components_
+
+#### pyLDAvis provides an easy visual library
+lda_display = pyLDAvis.lda_model.prepare(lda_text_model, count_text_vectors,
+                                        count_text_vectorizer, sort_topics=False)
+
+```""")
 
 ################################################################
 #### SUMMARY (ABSTRACT) OUTPUTS  ###############################
@@ -166,36 +207,44 @@ tab3.header(f"Notable Papers in {subcategory}")
 tab3.write(f"**{date_choice-timedelta(days=day_dict[day_choice])}** $\longleftrightarrow$ **{date_choice}**")
 
 if st.session_state.clicked:
-	#choose the LDA topic
-	features = count_text_vectorizer.get_feature_names_out()
-	topic_extender = [f"Topic {topic+1} keywords: {[features[words.argsort()[::-1][i]] for i in range(0,6)]}" for topic, words in enumerate(lda_text_model.components_)]
+	if len(df) <= 10:
+		tab3.subheader(":red[WARNING: not enough papers to sort by topic]")
+	else:
+		#choose the LDA topic
+		features = count_text_vectorizer.get_feature_names_out()
+		topic_extender = [f"Topic {topic+1} keywords: {[features[words.argsort()[::-1][i]] for i in range(0,6)]}" for topic, words in enumerate(lda_text_model.components_)]
 
-	topic = tab3.radio("Order by:",
-		["Chronological"] + topic_extender)
-	#	["Chronological", "Topic 1", "Topic 2", "Topic 3", "Topic 4", "Topic 5", "Topic 6"])
+		topic = tab3.radio("Order by:",
+			["Chronological order"] + topic_extender)
+		#	["Chronological", "Topic 1", "Topic 2", "Topic 3", "Topic 4", "Topic 5", "Topic 6"])
 
-	topic_mapping = {"Chronological": None, 
-						"Topic 1": 0, 
-						"Topic 2": 1, 
-						"Topic 3": 2, 
-						"Topic 4": 3,
-						"Topic 5": 4,
-						"Topic 6": 5}
+		topic_mapping = {"Chronological order": None, 
+							"Topic 1": 0, 
+							"Topic 2": 1, 
+							"Topic 3": 2, 
+							"Topic 4": 3,
+							"Topic 5": 4,
+							"Topic 6": 5}
 
+tab3.caption("\*Topic keywords are based on the unsupervised LDA topics under `LDA Analysis`")
 tab3.divider()
 
-if st.session_state.clicked:	
+if st.session_state.clicked:
 	#light string editing
 	df['Summary'] = df['Summary'].str.replace('\n',' ') # removing line breaks
 	df['Title'] = df['Title'].str.replace('\n','') # removing line breaks
 
-	if topic == "Chronological":
+	if len(df) <= 10:
 		df['score'] = 1
 		paper_output_maker(df)
-	else:
-		df['score'] = pd.DataFrame(W_lda_text_matrix)[topic_mapping[topic[:7]]]
-		ranked_list = pd.DataFrame(W_lda_text_matrix)[topic_mapping[topic[:7]]].sort_values(ascending=False).index
-		paper_output_maker(df.iloc[ranked_list].reset_index())
+	else:		
+		if topic == "Chronological order":
+			df['score'] = 1
+			paper_output_maker(df)
+		else:
+			df['score'] = pd.DataFrame(W_lda_text_matrix)[topic_mapping[topic[:7]]]
+			ranked_list = pd.DataFrame(W_lda_text_matrix)[topic_mapping[topic[:7]]].sort_values(ascending=False).index
+			paper_output_maker(df.iloc[ranked_list].reset_index())
 
 
 
@@ -209,22 +258,40 @@ tab2.write(f"**{date_choice-timedelta(days=day_dict[day_choice])}** $\longleftri
 number_of_papers = len(df)
 summary_lengths = df['Summary'].str.split().map(len)
 
-col1, col2 = tab2.columns(2)
+col1, col2, col3, col4 = tab2.columns(4)
 col1.metric("Number of Papers", f"{number_of_papers}")
 col2.metric("Avg. Abstract", f'{int(summary_lengths.mean())} words')
+col3.metric("Total Words", f"{len(np.concatenate(df['Summary'].str.split()))}")
+col4.metric("Unique Words", f"{len(set(np.concatenate(df['Summary'].str.split())))}")
+tab2.divider()
 
 #### SUMMARY LENGTH HISTOGRAM
 from bokeh.plotting import figure
 from bokeh.io import show, output_file
+from bokeh.models import ColumnDataSource
 
-hist, edges = np.histogram(summary_lengths, density=True, bins=32)
-p = figure(title=f"Lengths of Summary Abstracts",
-            x_axis_label="Tokens",width=100, height=300)
+hist, edges = np.histogram(summary_lengths, density=False, bins=int(np.sqrt(len(df))))
+p = figure(title=f"Abstract Length in Words (tokens)",
+            x_axis_label="Abstract Length (tokens)", width=600, height=300)
 p.quad(top=hist, bottom=0, left=edges[:-1], right=edges[1:], line_color="white")
+hover = HoverTool(tooltips = [('Papers', "@top")])
+p.add_tools(hover)
 
+#### PREPRINTS BY DATE
+sorted_dates = pd.to_datetime(df['Published']).dt.date.sort_values()
+dates_df = pd.DataFrame(sorted_dates.value_counts()).sort_values(by='Published').reset_index()
+source = ColumnDataSource(dates_df)
+p_bar = figure(title="Pre-print Submissions by Date",x_axis_type='datetime', width=700, height=350)
+p_bar.vbar(source=source, x='Published', top='count',width=80000000,line_color='white')
+hover = HoverTool(tooltips = [ ("Date","@Published{%F}"),('Papers', '@count')],
+                  formatters={'@Published': 'datetime'})
+p_bar.add_tools(hover)
 
+#### ALL CHARTS PLUS WORDCLOUD
 with tab2:
-	st.bokeh_chart(p,use_container_width=True)
+	st.bokeh_chart(p,use_container_width=False)
+	st.divider()
+	st.bokeh_chart(p_bar,use_container_width=False)
 	st.divider()
 	generate_wordcloud_from_df(df, field_choice, subcategory)
 	st.image('wordcloud_output.png')
@@ -239,17 +306,21 @@ tab5.write("[Provide credit to] https://huggingface.co/philschmid/bart-large-cnn
 
 link = tab5.text_input("Link to arXiv.org paper")
 model_button = tab5.button("Summarize article")
+tab5.caption('Note: this model in still in beta mode and may stop for unknown reasons. \
+	If it does not work, \
+	wait 15-30 seconds and hit the "Summarize article" button again.')
 
-if model_button:
-	link = link.replace('abs', 'pdf')  # Replacing 'abs' with 'pdf' in the URL
-	if not link.endswith('.pdf'):  # Checking if the link ends with '.pdf'
-	    link += '.pdf'  # Appending '.pdf' to the link if it doesn't end with it already
+with tab5:
+	if model_button:
+		link = link.replace('abs', 'pdf')  # Replacing 'abs' with 'pdf' in the URL
+		if not link.endswith('.pdf'):  # Checking if the link ends with '.pdf'
+		    link += '.pdf'  # Appending '.pdf' to the link if it doesn't end with it already
 
-	pdf_io = download_pdf_from_link(link)
-	pdf_text = extract_text_from_pdf(pdf_io)
+		pdf_io = download_pdf_from_link(link)
+		pdf_text = extract_text_from_pdf(pdf_io)
 
-	article_summary = generate_summary(input_text=pdf_text, API_KEY=API_KEY)
-	st.markdown(f"##### Main idea: {article_summary}")
+		article_summary = generate_summary(input_text=pdf_text, API_KEY=API_KEY)
+		st.markdown(f"##### Main idea: {article_summary}")
 
 
 ####################
