@@ -87,7 +87,11 @@ Lewis, Mike, et al. "BART: Denoising Sequence-to-Sequence Pre-training for Natur
 ### Installation
 #### Pipenv
 
-For development, verify [Pipenv](https://pipenv.pypa.io/en/latest/) setup.
+For development, verify [Pipenv](https://pipenv.pypa.io/en/latest/) setup. 
+
+After creating your development branch, you MUST rename the following files before performing the following steps:
+- Pipfile_dev -> Pipfile
+- Pipfile_dev.lock -> Pipfile.lock
 
 If Pipenv is not yet installed, please see [Pipenv Installation](https://pipenv.pypa.io/en/latest/installation.html#installing-packages-for-your-project). If using Windows, also see [Pipenv Windows Installation](https://www.pythontutorial.net/python-basics/install-pipenv-windows/)
 
@@ -106,3 +110,5 @@ If Pipenv is not yet installed, please see [Pipenv Installation](https://pipenv.
 3) Exit the virtual environment
 
 ``` exit ```
+
+4) Re-add '_dev' to Pipfile and Pipfile.lock files before merging to 'main' branch.
