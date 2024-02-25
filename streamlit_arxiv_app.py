@@ -294,7 +294,8 @@ with tab2:
 	st.bokeh_chart(p_bar,use_container_width=False)
 	st.divider()
 	generate_wordcloud_from_df(df, field_choice, subcategory)
-	st.image('wordcloud_output.png')
+	if st.session_state.clicked:
+		st.image('wordcloud_output.png')
 
 
 ################################################################
