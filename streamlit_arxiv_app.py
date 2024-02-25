@@ -48,8 +48,8 @@ def session_reset():
 st.title("arXiv.org Explorer")
 st.write("This app provides a summary of arXiv.org preprint activity in the subdomain of your choice")
 
-tab1, tab4, tab3, tab2, tab5 = st.tabs(['Home Inputs',  'LDA Analysis', 'Notable Papers',
-	'Simple Stats', 'Summarizer (BETA)'])
+tab1, tab2, tab4, tab3, tab5 = st.tabs(['Home Inputs',  'Simple Stats', 'LDA Analysis', 'Notable Papers',
+	 'Summarizer (BETA)'])
 
 ################################################################
 #### USER SELECTION OF CATEGORIES ##############################
@@ -305,7 +305,7 @@ with tab2:
 
 tab5.write("[Provide credit to] https://huggingface.co/philschmid/bart-large-cnn-samsum")
 
-link = tab5.text_input("Link to arXiv.org paper")
+link = tab5.text_input("Paste link to arXiv.org paper or PDF link")
 model_button = tab5.button("Summarize article")
 tab5.caption('Note: this model in still in beta mode and may stop for unknown reasons. \
 	If it does not work, \
