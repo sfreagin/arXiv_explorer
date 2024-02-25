@@ -33,7 +33,9 @@ This app provides a summary of arXiv.org preprint activity in the subdomain of y
 ### Simple Statistics
 
 After setting your input parameters, the 'Simple Stats' tab provides with summary statistics of the selected papers: 
+
 ![Simple Stats](images/simple_stats_tab.png)
+
 - Number of papers selected 
     - Including visualization of submissions per date
 - Average abstract length 
