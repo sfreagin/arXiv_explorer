@@ -45,7 +45,7 @@ def generate_summary(input_text: str, API_KEY: str, device: str='cpu') -> str:
             summary = output[0]['summary_text']
             sub_summaries.append(summary)
             st.caption(f'{summary.replace("</s><s><s><s>", "").replace("</s>", "")}')
-            time.sleep(4)
+            time.sleep(1)
         except:
             pass
     st.write("Final processing...")
