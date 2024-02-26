@@ -5,9 +5,6 @@ import numpy as np
 import json
 from datetime import datetime, timedelta
 
-from arxiv_app_modules.arxiv_api import arxiv_query, download_pdf_from_link, extract_text_from_pdf
-from arxiv_app_modules.summarization import generate_summary, batch_input_text, query
-
 import os
 try:
 	API_KEY = st.secrets['API_KEY']
@@ -27,14 +24,24 @@ from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.decomposition import LatentDirichletAllocation
 import pyLDAvis.lda_model
 
+from bokeh.plotting import figure
+from bokeh.io import show, output_file
+from bokeh.models import ColumnDataSource
 from bokeh.models import HoverTool
 from wordcloud import WordCloud
 from arxiv_app_modules.wordcloud_generator import generate_wordcloud_from_df
 
-from arxiv_app_modules.lda_model import simple_cleaner, vectorizer, lda_maker#, paper_output_maker
+from arxiv_app_modules.arxiv_api import arxiv_query, download_pdf_from_link, extract_text_from_pdf
+from arxiv_app_modules.lda_model import simple_cleaner, vectorizer, lda_maker
+from arxiv_app_modules.summarization import generate_summary, batch_input_text, query
 
 
-#statefulness
+################################################################
+################################################################
+################################################################
+################################################################
+
+######## statefulness is recommended for streamlit apps ########
 if 'clicked' not in st.session_state:
     st.session_state.clicked = False
 
@@ -44,7 +51,8 @@ def click_button():
 def session_reset():
     st.session_state.clicked = False
 
-# INTRO PAGE
+
+######## INTRO PAGE ########
 st.title("arXiv.org Explorer")
 st.write("This app provides a summary of arXiv.org preprint activity in the subdomain of your choice. \
 	Thank you to arXiv for use of its open access interoperability. https://arxiv.org")
@@ -52,6 +60,7 @@ st.caption("For avoidance of doubt, we are independent researchers and this proj
 	the arXiv. This app was not reviewed or approved by, \
 	nor does it necessarily express or reflect the policies or opinions of, arXiv.")
 
+#creating tabs on streamlit app
 tab1, tab2, tab4, tab3, tab5 = st.tabs(['Home Inputs', 'Simple Stats', 'LDA Analysis', 'Notable Papers', 
 	 'Summarizer (BETA)'])
 
@@ -79,7 +88,6 @@ subcategory = " ".join(category_choice.split()[:-1])
 tab1.write(f"You have chosen the {field_choice} field: {subcategory}")
 
 #choose a date range
-#tab1.markdown('**Choose a date range**')
 day_dict = {'7 days':7, '30 days':30, '90 days':90}
 day_choice = tab1.radio("**Choose a date window**",day_dict.keys(), on_change = session_reset)
 date_choice = tab1.date_input("Choose the endpoint", format="YYYY-MM-DD")
@@ -95,7 +103,9 @@ st.divider()
 
 
 ################################################################
-#### ARXIV API QUERY        ####################################
+#### ARXIV API QUERY ###########################################
+################################################################
+#### this pulls data from arxiv.org which powers the whole script
 ################################################################
 
 chosen_category = category_dict[field_choice][category_choice]
@@ -105,7 +115,7 @@ if chosen_category == "None":
 if st.session_state.clicked:
 	df = arxiv_query(chosen_category,start_date,end_date)
 	df = df.sort_values(by='Published', ascending=False).reset_index(drop=True)
-	#df.to_pickle('temp_df.pkl')
+
 	if len(df) == 1000:
 		tab1.write(f"##### We stopped after finding {len(df)} papers - \
 			consider narrowing the date range of your search")
@@ -115,23 +125,14 @@ if st.session_state.clicked:
 	else:
 		tab1.write(f"##### There are {len(df)} papers in this date range - \
 			explore the tabs for more info")
-else:
+else: #example output so the app doesn't crash upon opening
 	df = pd.read_csv('arxiv_app_modules/data/example_output.csv')
-################################################################
-#### HUGGINGFACE MODEL TO SUMMARIZE ARTICLES ###################
-################################################################
-
-summary_text = """It has been said that astronomy is a humbling and character-building experience. \
-There is perhaps no better demonstration of the folly of human conceits than this distant image of our tiny world. \
-To me, it underscores our responsibility to deal more kindly with one another, and to preserve and cherish the pale blue dot, \
-the only home we've ever known.
-
-— Carl Sagan, Pale Blue Dot, 1994
-"""
 
 
 ################################################################
-#### LDA MODEL        ###############################
+#### LDA MODEL #################################################
+################################################################
+#### uses sklearn and pyLDAvis for topic modeling
 ################################################################
 
 tab4.header(f"Latent Dirichlet Allocation (LDA) Analysis - {subcategory}")
@@ -144,6 +145,7 @@ tab4.markdown('The LDA visual model below is powered by the `pyLDAvis` library \
 	a corpus of text data."](https://pyldavis.readthedocs.io/en/latest/readme.html) ')
 tab4.divider()
 
+#clean text, run custom sklearn model, output pyLDAvis interactive chart
 if st.session_state.clicked:
 	if len(df) <= 10:
 		tab4.subheader(":red[WARNING: not enough papers to create LDA visual]")
@@ -190,26 +192,31 @@ lda_display = pyLDAvis.lda_model.prepare(lda_text_model, count_text_vectors,
 
 ```""")
 
+
 ################################################################
-#### SUMMARY (ABSTRACT) OUTPUTS  ###############################
+#### NOTABLE PAPER OUTPUTS  ####################################
+################################################################
+#### prints out article abstracts and sorts by LDA topic
 ################################################################
 
+# this function iteratively writes paper information: date, abstract, link, etc.
 def paper_output_maker(df):
 	for paper in range(0,20):#len(df)):
 		try:
 			tab3.markdown(f"##### {df['Title'][paper]}") #print the title
 			tab3.caption(f"Topic relevance: {round(df['score'][paper]*100,1	)}% $\cdot$ \
 							Published {df['Published'][paper][:10]}") #published date
-			tab3.markdown(f"**Abstract**:  {df['Summary'][paper]}") # abstract / summary
-			tab3.write(f"Link: {df['ID'][paper]}")
+			tab3.markdown(f"**Abstract**:  {df['Summary'][paper]}") #abstract (summary)
+			tab3.write(f"Link: {df['ID'][paper]}") #URL
 			tab3.divider()
-		except: #if there are fewer than 15 papers it throws an error
+		except: #if there are fewer than 20 papers it throws an error
 			break
 
-#header
+
 tab3.header(f"Notable Papers in {subcategory}")
 tab3.write(f"**{date_choice-timedelta(days=day_dict[day_choice])}** $\longleftrightarrow$ **{date_choice}**")
 
+#this creates the menu of LDA topics to sort by
 if st.session_state.clicked:
 	if len(df) <= 10:
 		tab3.subheader(":red[WARNING: not enough papers to sort by topic]")
@@ -220,7 +227,6 @@ if st.session_state.clicked:
 
 		topic = tab3.radio("Order by:",
 			["Chronological order"] + topic_extender)
-		#	["Chronological", "Topic 1", "Topic 2", "Topic 3", "Topic 4", "Topic 5", "Topic 6"])
 
 		topic_mapping = {"Chronological order": None, 
 							"Topic 1": 0, 
@@ -233,6 +239,7 @@ if st.session_state.clicked:
 tab3.caption("\*Topic keywords are based on the unsupervised LDA topics under `LDA Analysis`")
 tab3.divider()
 
+#write the abstracts based on sorting criteria
 if st.session_state.clicked:
 	#light string editing
 	df['Summary'] = df['Summary'].str.replace('\n',' ') # removing line breaks
@@ -251,14 +258,16 @@ if st.session_state.clicked:
 			paper_output_maker(df.iloc[ranked_list].reset_index())
 
 
-
 ################################################################
-#### SUMMARY OUTPUTS        ###############################
+#### SIMPLE STATS ##############################################
+################################################################
+#### tokens, charts, wordcloud, etc.
 ################################################################
 
 tab2.header(f"arXiv.org Abstracts in {subcategory}")
 tab2.write(f"**{date_choice-timedelta(days=day_dict[day_choice])}** $\longleftrightarrow$ **{date_choice}**")
 
+######## NUMERICAL STATS ########
 number_of_papers = len(df)
 summary_lengths = df['Summary'].str.split().map(len)
 
@@ -269,11 +278,9 @@ col3.metric("Total Abstract Words", f"{len(np.concatenate(df['Summary'].str.spli
 col4.metric("Unique Abstract Words", f"{len(set(np.concatenate(df['Summary'].str.split())))}")
 tab2.divider()
 
-#### SUMMARY LENGTH HISTOGRAM
-from bokeh.plotting import figure
-from bokeh.io import show, output_file
-from bokeh.models import ColumnDataSource
+######## PLOTTING CHARTS ########
 
+#### BOKEH histogram
 hist, edges = np.histogram(summary_lengths, density=False, bins=int(np.sqrt(len(df))))
 p = figure(title=f"Abstract Length in Words (tokens)",
             x_axis_label="Abstract Length (tokens)", width=600, height=300)
@@ -281,7 +288,7 @@ p.quad(top=hist, bottom=0, left=edges[:-1], right=edges[1:], line_color="white")
 hover = HoverTool(tooltips = [('Papers', "@top")])
 p.add_tools(hover)
 
-#### PREPRINTS BY DATE
+#### BOKEH bar chart by date
 sorted_dates = pd.to_datetime(df['Published']).dt.date.sort_values()
 dates_df = pd.DataFrame(sorted_dates.value_counts()).sort_values(by='Published').reset_index()
 source = ColumnDataSource(dates_df)
@@ -291,7 +298,7 @@ hover = HoverTool(tooltips = [ ("Date","@Published{%F}"),('Papers', '@count')],
                   formatters={'@Published': 'datetime'})
 p_bar.add_tools(hover)
 
-#### ALL CHARTS PLUS WORDCLOUD
+######## DISPLAYING ALL CHARTS PLUS WORDCLOUD ########
 with tab2:
 	st.bokeh_chart(p,use_container_width=False)
 	st.divider()
@@ -303,17 +310,29 @@ with tab2:
 
 
 ################################################################
-#### PULL PDF CONTENT  ###############################
+#### HUGGINGFACE MODEL TO SUMMARIZE ARTICLES ###################
 ################################################################
 
+# It has been said that astronomy is a humbling and character-building experience. 
+# There is perhaps no better demonstration of the folly of human conceits than this 
+# distant image of our tiny world. To me, it underscores our responsibility 
+# to deal more kindly with one another, and to preserve and cherish the pale blue dot, 
+# the only home we've ever known.
+#
+# — Carl Sagan, Pale Blue Dot, 1994
+
+################################################################
+#### SUMMARIZER LLM  ###########################################
+################################################################
+#### powers the huggingface model to summarize an article PDF
+################################################################
 
 tab5.write("[Provide credit to] https://huggingface.co/philschmid/bart-large-cnn-samsum")
 
 link = tab5.text_input("Paste link to arXiv.org paper or PDF link")
 model_button = tab5.button("Summarize article")
 tab5.caption('Note: this model in still in beta mode and may stop for unknown reasons. \
-	If it does not work, \
-	wait 15-30 seconds and hit the "Summarize article" button again.')
+	If it does not work, wait 15-30 seconds and hit the "Summarize article" button again.')
 
 with tab5:
 	if model_button:
@@ -321,10 +340,10 @@ with tab5:
 		if not link.endswith('.pdf'):  # Checking if the link ends with '.pdf'
 		    link += '.pdf'  # Appending '.pdf' to the link if it doesn't end with it already
 
-		pdf_io = download_pdf_from_link(link)
-		pdf_text = extract_text_from_pdf(pdf_io)
+		pdf_io = download_pdf_from_link(link) # download the PDF
+		pdf_text = extract_text_from_pdf(pdf_io) # extract text
 
-		article_summary = generate_summary(input_text=pdf_text, API_KEY=API_KEY)
+		article_summary = generate_summary(input_text=pdf_text, API_KEY=API_KEY) #call the external LLM
 		st.markdown(f"##### Main idea: {article_summary}")
 
 
