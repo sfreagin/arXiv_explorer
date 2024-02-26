@@ -1,4 +1,5 @@
 # ArXiv.org Explorer
+Check out the [streamlit app](https://arxiv-explorer.streamlit.app)
 
 ## Overview
 
@@ -112,3 +113,10 @@ If Pipenv is not yet installed, please see [Pipenv Installation](https://pipenv.
 ``` exit ```
 
 4) Re-add '_dev' to Pipfile and Pipfile.lock files before merging to 'main' branch.
+
+## Authors
+
+* Stephen Reagin https://github.com/sfreagin
+  * sreagin@sandiego.edu
+* Bryan Flores https://github.com/giantmagellan
+* Trevor Sauerbrey https://github.com/trevsauer
