@@ -264,9 +264,9 @@ summary_lengths = df['Summary'].str.split().map(len)
 
 col1, col2, col3, col4 = tab2.columns(4)
 col1.metric("Number of Papers", f"{number_of_papers}")
-col2.metric("Avg. Abstract", f'{int(summary_lengths.mean())} words')
-col3.metric("Total Words", f"{len(np.concatenate(df['Summary'].str.split()))}")
-col4.metric("Unique Words", f"{len(set(np.concatenate(df['Summary'].str.split())))}")
+col2.metric("Avg. Abstract Length", f'{int(summary_lengths.mean())} words')
+col3.metric("Total Abstract Words", f"{len(np.concatenate(df['Summary'].str.split()))}")
+col4.metric("Unique Abstract Words", f"{len(set(np.concatenate(df['Summary'].str.split())))}")
 tab2.divider()
 
 #### SUMMARY LENGTH HISTOGRAM
