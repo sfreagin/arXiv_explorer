@@ -46,9 +46,13 @@ def session_reset():
 
 # INTRO PAGE
 st.title("arXiv.org Explorer")
-st.write("This app provides a summary of arXiv.org preprint activity in the subdomain of your choice")
+st.write("This app provides a summary of arXiv.org preprint activity in the subdomain of your choice. \
+	Thank you to arXiv for use of its open access interoperability. https://arxiv.org")
+st.caption("For avoidance of doubt, we are independent researchers and this project is NOT affiliated with \
+	the arXiv. This app was not reviewed or approved by, \
+	nor does it necessarily express or reflect the policies or opinions of, arXiv.")
 
-tab1, tab2, tab4, tab3, tab5 = st.tabs(['Home Inputs',  'Simple Stats', 'LDA Analysis', 'Notable Papers',
+tab1, tab2, tab4, tab3, tab5 = st.tabs(['Home Inputs', 'Simple Stats', 'LDA Analysis', 'Notable Papers', 
 	 'Summarizer (BETA)'])
 
 ################################################################
