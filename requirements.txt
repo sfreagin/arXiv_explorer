@@ -9,6 +9,7 @@ pyLDAvis==3.4.1
 PyPDF2==3.0.1
 Requests==2.31.0
 scikit_learn==1.2.2
+streamlit==1.29.0
 torch==2.2.0
 transformers==4.37.2
 wordcloud==1.9.3
